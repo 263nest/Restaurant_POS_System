@@ -17,24 +17,28 @@ const Home = () => {
     document.title = "POS | Home";
   }, []);
 
-  // Fetch waiter metrics if user is waiter
+  // Check if user is a waiter or cashier (staff member)
+  const isWaiterOrCashier = 
+    role?.toLowerCase() === "waiter" || 
+    role?.toLowerCase() === "cashier" ||
+    role?.toLowerCase() === "staff";
+
+  // Fetch waiter metrics if user is waiter/cashier
   const { data: metricsData } = useQuery({
     queryKey: ["waiterMetrics"],
     queryFn: getWaiterMetrics,
-    enabled: role === "Waiter" || role === "waiter", // Only fetch if user is a waiter
+    enabled: isWaiterOrCashier, // Only fetch if user is staff
     staleTime: 60000,
   });
 
   // Use dynamic data for waiters, hardcoded for others
-  const totalEarnings =
-    role === "Waiter" || role === "waiter"
-      ? parseFloat(metricsData?.data?.data?.totalEarnings || 0)
-      : 512;
+  const totalEarnings = isWaiterOrCashier
+    ? parseFloat(metricsData?.data?.data?.totalEarnings || 0)
+    : 512;
 
-  const inProgressOrders =
-    role === "Waiter" || role === "waiter"
-      ? metricsData?.data?.data?.totalOrders || 0
-      : 16;
+  const inProgressOrders = isWaiterOrCashier
+    ? metricsData?.data?.data?.totalOrders || 0
+    : 16;
 
   return (
     <section className="bg-[#1f1f1f]  h-[calc(100vh-5rem)] overflow-hidden flex gap-3">
@@ -50,14 +54,14 @@ const Home = () => {
           />
           <MiniCard
             title={
-              role === "Waiter" || role === "waiter"
+              isWaiterOrCashier
                 ? "Total Orders"
                 : "In Progress"
             }
             icon={<GrInProgress />}
             number={inProgressOrders}
             footerNum={
-              role === "Waiter" || role === "waiter"
+              isWaiterOrCashier
                 ? metricsData?.data?.data?.customersServed || 0
                 : 3.6
             }
