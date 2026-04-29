@@ -31,10 +31,7 @@ const getMpesaAccessToken = async () => {
 
 // Generate MPESA Password
 const generateMpesaPassword = () => {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[:-]/g, "")
-    .split(".")[0];
+  const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0];
   const shortCode = config.mpesaBusinessShortCode;
   const passKey = config.mpesaPassKey;
 
@@ -104,8 +101,7 @@ const createOrder = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message:
-        "Payment prompt sent to customer - Please enter your M-Pesa PIN",
+      message: "Payment prompt sent to customer - Please enter your M-Pesa PIN",
       paymentMethod: "MPESA",
       amount,
       phoneNumber: formattedPhoneNumber,
@@ -177,7 +173,7 @@ const getDayTransactions = async (req, res, next) => {
     // Get start and end of today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -185,15 +181,22 @@ const getDayTransactions = async (req, res, next) => {
     const transactions = await Payment.find({
       createdAt: {
         $gte: today,
-        $lt: tomorrow
-      }
+        $lt: tomorrow,
+      },
     }).sort({ createdAt: -1 });
 
     // Calculate summary stats
-    const totalAmount = transactions.reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+    const totalAmount = transactions.reduce(
+      (sum, transaction) => sum + (transaction.amount || 0),
+      0,
+    );
     const totalTransactions = transactions.length;
-    const successfulTransactions = transactions.filter(t => t.status === "completed" || t.status === "success").length;
-    const failedTransactions = transactions.filter(t => t.status === "failed").length;
+    const successfulTransactions = transactions.filter(
+      (t) => t.status === "completed" || t.status === "success",
+    ).length;
+    const failedTransactions = transactions.filter(
+      (t) => t.status === "failed",
+    ).length;
 
     res.status(200).json({
       success: true,
@@ -204,11 +207,12 @@ const getDayTransactions = async (req, res, next) => {
         totalAmount,
         successfulTransactions,
         failedTransactions,
-        pendingTransactions: totalTransactions - successfulTransactions - failedTransactions
+        pendingTransactions:
+          totalTransactions - successfulTransactions - failedTransactions,
       },
       transactions,
       retrievedBy: req.user.role,
-      retrievedAt: new Date()
+      retrievedAt: new Date(),
     });
   } catch (error) {
     console.error("❌ Error fetching day transactions:", error);
@@ -216,4 +220,9 @@ const getDayTransactions = async (req, res, next) => {
   }
 };
 
-module.exports = { createOrder, verifyPayment, webHookVerification, getDayTransactions };
+module.exports = {
+  createOrder,
+  verifyPayment,
+  webHookVerification,
+  getDayTransactions,
+};

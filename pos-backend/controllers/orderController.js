@@ -4,7 +4,10 @@ const { default: mongoose } = require("mongoose");
 
 const addOrder = async (req, res, next) => {
   try {
-    const order = new Order(req.body);
+    const order = new Order({
+      ...req.body,
+      createdBy: req.user._id, // Capture the waiter's user ID from JWT token
+    });
     await order.save();
     res
       .status(201)
@@ -57,7 +60,7 @@ const updateOrder = async (req, res, next) => {
     const order = await Order.findByIdAndUpdate(
       id,
       { orderStatus },
-      { new: true }
+      { new: true },
     );
 
     if (!order) {
@@ -73,4 +76,47 @@ const updateOrder = async (req, res, next) => {
   }
 };
 
-module.exports = { addOrder, getOrderById, getOrders, updateOrder };
+// Get waiter-specific metrics (orders count, customers served, total earnings)
+const getWaiterMetrics = async (req, res, next) => {
+  try {
+    const waiterId = req.user._id;
+
+    // Get all orders created by this waiter
+    const waiterOrders = await Order.find({ createdBy: waiterId });
+
+    // Calculate metrics
+    const totalOrders = waiterOrders.length;
+
+    // Get unique customers (by phone number)
+    const uniqueCustomers = new Set(
+      waiterOrders.map((order) => order.customerDetails.phone),
+    ).size;
+
+    // Calculate total earnings
+    const totalEarnings = waiterOrders.reduce((sum, order) => {
+      return sum + (order.bills?.totalWithTax || 0);
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalOrders,
+        customersServed: uniqueCustomers,
+        totalEarnings: totalEarnings.toFixed(2),
+        waiterName: req.user.name,
+        waiterId: waiterId,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching waiter metrics:", error);
+    next(error);
+  }
+};
+
+module.exports = {
+  addOrder,
+  getOrderById,
+  getOrders,
+  updateOrder,
+  getWaiterMetrics,
+};
