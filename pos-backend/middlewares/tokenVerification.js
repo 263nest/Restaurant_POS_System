@@ -31,4 +31,27 @@ const isVerifiedUser = async (req, res, next) => {
     }
 }
 
-module.exports = { isVerifiedUser };
+// Role-based access control middleware
+const isAdminOrCashier = async (req, res, next) => {
+    try {
+        // Ensure user is verified first
+        if (!req.user) {
+            const error = createHttpError(401, "User not authenticated!");
+            return next(error);
+        }
+
+        const allowedRoles = ["admin", "cashier"];
+        
+        if (!allowedRoles.includes(req.user.role)) {
+            const error = createHttpError(403, "Access denied! Only admin and cashier can view transactions.");
+            return next(error);
+        }
+
+        next();
+    } catch (error) {
+        const err = createHttpError(500, "Authorization error!");
+        next(err);
+    }
+}
+
+module.exports = { isVerifiedUser, isAdminOrCashier };
