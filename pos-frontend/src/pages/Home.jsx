@@ -18,8 +18,8 @@ const Home = () => {
   }, []);
 
   // Check if user is a waiter or cashier (staff member)
-  const isWaiterOrCashier = 
-    role?.toLowerCase() === "waiter" || 
+  const isWaiterOrCashier =
+    role?.toLowerCase() === "waiter" ||
     role?.toLowerCase() === "cashier" ||
     role?.toLowerCase() === "staff";
 
@@ -53,11 +53,7 @@ const Home = () => {
             footerNum={totalEarnings > 0 ? (totalEarnings / 100).toFixed(1) : 0}
           />
           <MiniCard
-            title={
-              isWaiterOrCashier
-                ? "Total Orders"
-                : "In Progress"
-            }
+            title={isWaiterOrCashier ? "Total Orders" : "In Progress"}
             icon={<GrInProgress />}
             number={inProgressOrders}
             footerNum={
