@@ -125,12 +125,19 @@ const Invoice = ({ orderInfo, setShowInvoice }) => {
                   <strong>Payment Method:</strong> {orderInfo.paymentMethod}
                 </p>
                 <p>
-                  <strong>Razorpay Order ID:</strong>{" "}
-                  {orderInfo.paymentData?.razorpay_order_id}
+                  <strong>Checkout Request ID:</strong>{" "}
+                  {orderInfo.paymentData?.checkoutRequestId}
                 </p>
                 <p>
-                  <strong>Razorpay Payment ID:</strong>{" "}
-                  {orderInfo.paymentData?.razorpay_payment_id}
+                  <strong>Merchant Request ID:</strong>{" "}
+                  {orderInfo.paymentData?.merchantRequestId}
+                </p>
+                <p>
+                  <strong>Phone Number:</strong>{" "}
+                  {orderInfo.paymentData?.mpesaPhoneNumber}
+                </p>
+                <p>
+                  <strong>Amount:</strong> ₹{orderInfo.paymentData?.mpesaAmount}
                 </p>
               </>
             )}

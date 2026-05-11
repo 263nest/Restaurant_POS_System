@@ -6,8 +6,25 @@ const Payment = require("../models/paymentModel");
 
 // ========== MPESA INTEGRATION ==========
 
+const validateMpesaConfig = () => {
+  const missing = [];
+  if (!config.mpesaConsumerKey) missing.push("MPESA_CONSUMER_KEY");
+  if (!config.mpesaConsumerSecret) missing.push("MPESA_CONSUMER_SECRET");
+  if (!config.mpesaBusinessShortCode) missing.push("MPESA_BUSINESS_SHORT_CODE");
+  if (!config.mpesaPassKey) missing.push("MPESA_PASS_KEY");
+  if (!config.mpesaCallbackUrl) missing.push("MPESA_CALLBACK_URL");
+
+  if (missing.length > 0) {
+    throw new Error(
+      `MPESA configuration incomplete. Missing: ${missing.join(", ")}`,
+    );
+  }
+};
+
 // Get MPESA Access Token
 const getMpesaAccessToken = async () => {
+  validateMpesaConfig();
+
   try {
     const auth = Buffer.from(
       `${config.mpesaConsumerKey}:${config.mpesaConsumerSecret}`,
@@ -24,14 +41,21 @@ const getMpesaAccessToken = async () => {
 
     return response.data.access_token;
   } catch (error) {
-    console.error("❌ Error getting MPESA access token:", error.message);
+    console.error(
+      "❌ Error getting MPESA access token:",
+      error.response?.status,
+      error.response?.data ?? error.message,
+    );
     throw error;
   }
 };
 
 // Generate MPESA Password
 const generateMpesaPassword = () => {
-  const timestamp = new Date().toISOString().replace(/[:-]/g, "").split(".")[0];
+  const timestamp = new Date()
+    .toISOString()
+    .split(".")[0]
+    .replace(/[-:T]/g, "");
   const shortCode = config.mpesaBusinessShortCode;
   const passKey = config.mpesaPassKey;
 
@@ -53,11 +77,15 @@ const createOrder = async (req, res, next) => {
     }
 
     // Validate phone number format (should be 254XXXXXXXXX for Kenya)
-    const formattedPhoneNumber = phoneNumber.replace(/^0/, "254");
+    const formattedPhoneNumber = phoneNumber
+      .trim()
+      .replace(/^\+?0?/, "254");
+
     if (!/^254\d{9}$/.test(formattedPhoneNumber)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid phone number format",
+        message:
+          "Invalid phone number format. Use 254XXXXXXXXX or 07XXXXXXXX.",
       });
     }
 
@@ -110,8 +138,22 @@ const createOrder = async (req, res, next) => {
       merchantRequestId: response.data.MerchantRequestID,
     });
   } catch (error) {
-    console.log("❌ M-Pesa Error:", error.message);
-    next(error);
+    console.error(
+      "❌ M-Pesa Error:",
+      error.response?.status,
+      error.response?.data ?? error.message,
+    );
+
+    const message =
+      error.response?.data?.errorMessage ||
+      error.response?.data?.error_description ||
+      error.message ||
+      "M-Pesa request failed";
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message,
+    });
   }
 };
 

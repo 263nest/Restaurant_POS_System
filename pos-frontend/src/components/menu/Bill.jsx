@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getTotalPrice } from "../../redux/slices/cartSlice";
 import {
   addOrder,
-  createOrderRazorpay,
+  createOrderMpesa,
   updateTable,
-  verifyPaymentRazorpay,
+  verifyPaymentMpesa,
 } from "../../https/index";
 import { enqueueSnackbar } from "notistack";
 import { useMutation } from "@tanstack/react-query";
@@ -13,19 +13,184 @@ import { removeAllItems } from "../../redux/slices/cartSlice";
 import { removeCustomer } from "../../redux/slices/customerSlice";
 import Invoice from "../invoice/Invoice";
 
-function loadScript(src) {
-  return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => {
-      resolve(true);
-    };
-    script.onerror = () => {
-      resolve(false);
-    };
-    document.body.appendChild(script);
-  });
-}
+// Receipt Preview Component
+const ReceiptPreview = ({ orderInfo, setShowPreview }) => {
+  const receiptRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!orderInfo) return;
+
+    const printContent = receiptRef.current.innerHTML;
+    const WinPrint = window.open("", "", "width=900,height=650");
+
+    WinPrint.document.write(`
+      <html>
+        <head>
+          <title>Order Receipt Preview</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px; 
+              background-color: #f5f5f5;
+            }
+            .receipt-container { 
+              width: 400px; 
+              margin: 0 auto;
+              background: white;
+              border: 1px solid #ddd; 
+              padding: 20px;
+              border-radius: 8px;
+            }
+            h2 { 
+              text-align: center; 
+              margin-bottom: 20px;
+              color: #025cca;
+            }
+            .receipt-details {
+              margin: 15px 0;
+              border-bottom: 1px solid #eee;
+              padding-bottom: 10px;
+            }
+            .receipt-item {
+              display: flex;
+              justify-content: space-between;
+              margin: 8px 0;
+              font-size: 14px;
+            }
+            .receipt-total {
+              font-weight: bold;
+              font-size: 16px;
+              margin-top: 10px;
+            }
+            .receipt-footer {
+              text-align: center;
+              margin-top: 20px;
+              font-size: 12px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+
+    WinPrint.document.close();
+    WinPrint.focus();
+    setTimeout(() => {
+      WinPrint.print();
+      WinPrint.close();
+    }, 1000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-[#1f1f1f] p-6 rounded-lg shadow-2xl w-[450px] max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold text-[#f5f5f5] mb-4 text-center">
+          📋 Receipt Preview
+        </h2>
+
+        {/* Receipt Content */}
+        <div 
+          ref={receiptRef} 
+          className="bg-[#f5f5f5] p-4 rounded-lg text-black"
+        >
+          <div className="text-center mb-4">
+            <h3 className="text-xl font-bold">RESTRO</h3>
+            <p className="text-xs text-gray-600">Restaurant POS</p>
+          </div>
+
+          <hr className="my-3" />
+
+          {/* Customer Details */}
+          <div className="text-sm mb-4">
+            <p>
+              <strong>Customer:</strong> {orderInfo.customerName}
+            </p>
+            <p>
+              <strong>Phone:</strong> {orderInfo.customerPhone}
+            </p>
+            <p>
+              <strong>Guests:</strong> {orderInfo.guests}
+            </p>
+            <p>
+              <strong>Date:</strong> {new Date().toLocaleDateString()}
+            </p>
+          </div>
+
+          <hr className="my-3" />
+
+          {/* Items */}
+          <div className="mb-4">
+            <h4 className="font-bold text-sm mb-2">Items Ordered</h4>
+            {orderInfo.items && orderInfo.items.length > 0 ? (
+              <div className="text-xs space-y-1">
+                {orderInfo.items.map((item, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>₹{(item.price * (item.quantity || 1)).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-600">No items</p>
+            )}
+          </div>
+
+          <hr className="my-3" />
+
+          {/* Bills */}
+          <div className="text-sm space-y-1 mb-4">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <strong>₹{orderInfo.total?.toFixed(2)}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax (5.25%):</span>
+              <strong>₹{orderInfo.tax?.toFixed(2)}</strong>
+            </div>
+            <div className="flex justify-between text-base font-bold bg-yellow-100 p-2 rounded">
+              <span>Total:</span>
+              <span>₹{orderInfo.totalWithTax?.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <hr className="my-3" />
+
+          {/* Payment Method */}
+          <div className="text-sm mb-4 text-center">
+            <p>
+              <strong>Payment Method:</strong> {orderInfo.paymentMethod}
+            </p>
+          </div>
+
+          <div className="text-center text-xs text-gray-600 mt-4">
+            <p>Thank you for your order!</p>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={handlePrint}
+            className="flex-1 bg-[#025cca] text-[#f5f5f5] py-3 rounded-lg font-semibold hover:bg-[#0247a3] transition"
+          >
+            🖨️ Print
+          </button>
+          <button
+            onClick={() => setShowPreview(false)}
+            className="flex-1 bg-[#383737] text-[#f5f5f5] py-3 rounded-lg font-semibold hover:bg-[#454545] transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Bill = () => {
   const dispatch = useDispatch();
@@ -38,96 +203,85 @@ const Bill = () => {
   const totalPriceWithTax = total + tax;
 
   const [paymentMethod, setPaymentMethod] = useState();
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [orderInfo, setOrderInfo] = useState();
+  const [showPreview, setShowPreview] = useState(false);
 
   const handlePlaceOrder = async () => {
     if (!paymentMethod) {
       enqueueSnackbar("Please select a payment method!", {
         variant: "warning",
       });
-
       return;
     }
 
     if (paymentMethod === "Online") {
-      // load the script
+      // M-Pesa Online Payment
+      if (!phoneNumber.trim()) {
+        enqueueSnackbar("Please enter your phone number for M-Pesa payment!", {
+          variant: "warning",
+        });
+        return;
+      }
+
       try {
-        const res = await loadScript(
-          "https://checkout.razorpay.com/v1/checkout.js"
-        );
-
-        if (!res) {
-          enqueueSnackbar("Razorpay SDK failed to load. Are you online?", {
-            variant: "warning",
-          });
-          return;
-        }
-
-        // create order
-
+        // Create M-Pesa order
         const reqData = {
-          amount: totalPriceWithTax.toFixed(2),
+          amount: Math.ceil(totalPriceWithTax),
+          phoneNumber: phoneNumber,
         };
 
-        const { data } = await createOrderRazorpay(reqData);
+        const { data } = await createOrderMpesa(reqData);
 
-        const options = {
-          key: `${import.meta.env.VITE_RAZORPAY_KEY_ID}`,
-          amount: data.order.amount,
-          currency: data.order.currency,
-          name: "RESTRO",
-          description: "Secure Payment for Your Meal",
-          order_id: data.order.id,
-          handler: async function (response) {
-            const verification = await verifyPaymentRazorpay(response);
-            console.log(verification);
-            enqueueSnackbar(verification.data.message, { variant: "success" });
+        if (data.success) {
+          enqueueSnackbar(
+            "M-Pesa prompt sent! Please enter your PIN to complete payment.",
+            {
+              variant: "info",
+            }
+          );
 
-            // Place the order
-            const orderData = {
-              customerDetails: {
-                name: customerData.customerName,
-                phone: customerData.customerPhone,
-                guests: customerData.guests,
-              },
-              orderStatus: "In Progress",
-              bills: {
-                total: total,
-                tax: tax,
-                totalWithTax: totalPriceWithTax,
-              },
-              items: cartData,
-              table: customerData.table.tableId,
-              paymentMethod: paymentMethod,
-              paymentData: {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-              },
-            };
+          // Place the order
+          const orderData = {
+            customerDetails: {
+              name: customerData.customerName,
+              phone: customerData.customerPhone,
+              guests: customerData.guests,
+            },
+            orderStatus: "In Progress",
+            bills: {
+              total: total,
+              tax: tax,
+              totalWithTax: totalPriceWithTax,
+            },
+            items: cartData,
+            table: customerData.table.tableId,
+            paymentMethod: paymentMethod,
+            paymentData: {
+              checkoutRequestId: data.checkoutRequestId,
+              merchantRequestId: data.merchantRequestId,
+              mpesaPhoneNumber: data.phoneNumber,
+              mpesaAmount: data.amount,
+            },
+          };
 
-            setTimeout(() => {
-              orderMutation.mutate(orderData);
-            }, 1500);
-          },
-          prefill: {
-            name: customerData.name,
-            email: "",
-            contact: customerData.phone,
-          },
-          theme: { color: "#025cca" },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+          setTimeout(() => {
+            orderMutation.mutate(orderData);
+          }, 2000);
+        } else {
+          enqueueSnackbar("Failed to initiate M-Pesa payment!", {
+            variant: "error",
+          });
+        }
       } catch (error) {
         console.log(error);
-        enqueueSnackbar("Payment Failed!", {
+        enqueueSnackbar("M-Pesa Payment Error!", {
           variant: "error",
         });
       }
     } else {
-      // Place the order
+      // Cash Payment - Place order directly
       const orderData = {
         customerDetails: {
           name: customerData.customerName,
@@ -189,6 +343,21 @@ const Bill = () => {
     },
   });
 
+  const handlePrintPreview = () => {
+    const previewData = {
+      customerName: customerData.customerName,
+      customerPhone: customerData.customerPhone,
+      guests: customerData.guests,
+      items: cartData,
+      total: total,
+      tax: tax,
+      totalWithTax: totalPriceWithTax,
+      paymentMethod: paymentMethod,
+    };
+    setOrderInfo(previewData);
+    setShowPreview(true);
+  };
+
   return (
     <>
       <div className="flex items-center justify-between px-5 mt-2">
@@ -230,17 +399,36 @@ const Bill = () => {
         </button>
       </div>
 
+      {paymentMethod === "Online" && (
+        <div className="px-5 mt-4">
+          <input
+            type="text"
+            placeholder="Enter M-Pesa phone number (254...)"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg bg-[#1f1f1f] text-[#f5f5f5] border border-[#383737] focus:border-[#025cca] outline-none"
+          />
+        </div>
+      )}
+
       <div className="flex items-center gap-3 px-5 mt-4">
-        <button className="bg-[#025cca] px-4 py-3 w-full rounded-lg text-[#f5f5f5] font-semibold text-lg">
+        <button 
+          onClick={handlePrintPreview}
+          className="bg-[#025cca] px-4 py-3 w-full rounded-lg text-[#f5f5f5] font-semibold text-lg hover:bg-[#0247a3] transition"
+        >
           Print Receipt
         </button>
         <button
           onClick={handlePlaceOrder}
-          className="bg-[#f6b100] px-4 py-3 w-full rounded-lg text-[#1f1f1f] font-semibold text-lg"
+          className="bg-[#f6b100] px-4 py-3 w-full rounded-lg text-[#1f1f1f] font-semibold text-lg hover:bg-[#d99e00] transition"
         >
           Place Order
         </button>
       </div>
+
+      {showPreview && (
+        <ReceiptPreview orderInfo={orderInfo} setShowPreview={setShowPreview} />
+      )}
 
       {showInvoice && (
         <Invoice orderInfo={orderInfo} setShowInvoice={setShowInvoice} />

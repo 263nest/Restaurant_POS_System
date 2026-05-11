@@ -45,7 +45,7 @@ const Menu = () => {
         <MenuContainer />
       </div>
       {/* Right Div */}
-      <div className="flex-[1] bg-[#1a1a1a] mt-4 mr-3 h-[780px] rounded-lg pt-2">
+      <div className="flex-[1] bg-[#1a1a1a] mt-4 mr-3 h-full rounded-lg pt-2 overflow-y-auto pb-24">
         {/* Customer Info */}
         <CustomerInfo />
         <hr className="border-[#2a2a2a] border-t-2" />

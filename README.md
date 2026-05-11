@@ -293,9 +293,9 @@ API wrapper functions exposed to pages and components:
   - `getOrders()`
   - `updateOrderStatus({ orderId, orderStatus })`
   - `getWaiterMetrics()`
-- Payment
-  - `createOrderRazorpay(data)`
-  - `verifyPaymentRazorpay(data)`
+- Payment (M-Pesa)
+  - `createOrderMpesa(data)` - Initiates M-Pesa STK Push
+  - `verifyPaymentMpesa(data)` - Verifies M-Pesa payment
 
 ### `src/hooks/useLoadData.js`
 
@@ -320,6 +320,27 @@ API wrapper functions exposed to pages and components:
 - `Tables.jsx` — table management and seating assignments
 - `Menu.jsx` — menu browsing and cart interactions
 - `Dashboard.jsx` — admin/cashier analytics and performance metrics
+
+### Key Components
+
+#### `src/components/menu/Bill.jsx`
+- Displays order summary with item breakdown
+- Shows tax calculation (5.25%)
+- Provides payment method selection (Cash / Online M-Pesa)
+- M-Pesa phone number input field (appears when "Online" is selected)
+- "Print Receipt" button opens preview modal
+- "Place Order" button submits order with payment details
+- **ReceiptPreview Component:**
+  - Shows professional receipt preview
+  - Displays all order details formatted for printing
+  - Print button opens browser print dialog
+  - Close button to dismiss preview
+
+#### `src/components/invoice/Invoice.jsx`
+- Order confirmation modal after successful order placement
+- Shows complete order details with M-Pesa payment information
+- Displays items, costs, taxes, and totals
+- Print and close buttons for receipt handling
 
 ---
 
@@ -347,10 +368,20 @@ API wrapper functions exposed to pages and components:
 
 ### Payment Flow
 
-1. Payment request is sent to `POST /api/payment/create-order`
-2. Backend initiates MPESA STK Push using sandbox APIs
-3. Payment verification is accepted by `POST /api/payment/verify-payment`
-4. Webhook callbacks can be received at `/api/payment/webhook-verification`
+1. Customer selects payment method: **Cash** or **Online (M-Pesa)**
+2. **For M-Pesa:**
+   - Customer enters phone number (254XXXXXXXXX format)
+   - Payment request sent to `POST /api/payment/create-order`
+   - Backend initiates M-Pesa STK Push using Daraja API
+   - M-Pesa prompt appears on customer's phone to enter PIN
+   - Payment verification via `POST /api/payment/verify-payment`
+   - Payment data saved with order
+3. **For Cash:**
+   - Order is created immediately without payment processing
+4. **Receipt Preview:**
+   - Customer can preview receipt before placing order
+   - Receipt shows: customer details, items, taxes, totals, and payment method
+   - Print button opens print dialog
 
 ### Metrics & Dashboard Flow
 
@@ -362,9 +393,27 @@ API wrapper functions exposed to pages and components:
 
 ## 💡 Notes
 
-- MPESA is currently used for payment flows instead of Razorpay.
-- The backend uses environment variables for secrets and external API configuration.
-- The frontend requires `VITE_BACKEND_URL` so axios requests reach the backend.
+- **Payment Gateway:** M-Pesa Daraja API integration (Razorpay has been replaced)
+  - Uses sandbox APIs for development
+  - Requires M-Pesa business account and sandbox credentials
+  - Supports STK Push for seamless payment prompts
+  
+- **Receipt Features:**
+  - Print preview modal before placing order
+  - Displays all order details with items breakdown
+  - Professional receipt formatting for printing
+  - M-Pesa payment details stored with order
+  
+- **Backend Configuration:**
+  - Uses environment variables for all secrets and API credentials
+  - MongoDB connection string must be configured in `.env`
+  - M-Pesa sandbox credentials required for payments
+  
+- **Frontend Architecture:**
+  - React with Redux for state management
+  - Axios for API requests with credentials
+  - Tailwind CSS for styling
+  - Responsive design for different device sizes
 
 ---
 
