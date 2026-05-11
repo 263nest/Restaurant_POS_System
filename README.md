@@ -68,6 +68,31 @@ The application supports role-based authentication, waiter metrics, cashier dash
    npm run dev
    ```
 
+### Connect with MongoDB Compass
+
+1. Start your local MongoDB server:
+   - If MongoDB is installed as a service:
+     ```bash
+     net start MongoDB
+     ```
+   - If running manually:
+     ```bash
+     mongod --dbpath "C:\data\db"
+     ```
+2. Open MongoDB Compass.
+3. Create a new connection using:
+   ```text
+   mongodb://localhost:27017
+   ```
+4. Connect and select the `pos-db` database.
+5. Inside `pos-db`, you should see collections such as:
+   - `orders`
+   - `payments`
+   - `tables`
+   - `users`
+
+> Note: `admin`, `config`, and `local` are system databases created by MongoDB. Your app data is stored in `pos-db`.
+
 ### Frontend
 
 1. Create `.env` in `pos-frontend`
